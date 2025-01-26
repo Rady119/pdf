@@ -32,36 +32,45 @@ def home():
     return "الخادم يعمل بنجاح!"
 
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 # تحويل PDF إلى Word
 @app.route('/convert-pdf-to-word', methods=['POST'])
 def convert_pdf_to_word():
+    if 'file' not in request.files:
+        return jsonify({"error": "لا يوجد ملف مرفق!"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "لم يتم اختيار ملف!"}), 400
+
+    if not allowed_file(file.filename) or file.filename.rsplit('.', 1)[1].lower() != 'pdf':
+        return jsonify({"error": "الملف غير مدعوم! يرجى رفع ملف PDF فقط."}), 400
+
     try:
-        if 'file' not in request.files:
-            return jsonify({"error": "لا يوجد ملف مرفق!"}), 400
-
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "لم يتم اختيار ملف!"}), 400
-
-        if not allowed_file(file.filename) or file.filename.rsplit('.', 1)[1].lower() != 'pdf':
-            return jsonify({"error": "الملف غير مدعوم! يرجى رفع ملف PDF فقط."}), 400
-
+        # تنظيف اسم الملف
         original_filename = file.filename
         clean_filename = re.sub(r'[^\w\s-]', '', original_filename).replace(' ', '_')
         clean_filename = clean_filename.rsplit('.', 1)[0] + '.docx'
 
+        # حفظ الملف المرفوع
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
 
+        # تحويل PDF إلى Word
         docx_path = os.path.join(CONVERTED_FOLDER, clean_filename)
         cv = Converter(file_path)
         cv.convert(docx_path, start=0, end=None)
         cv.close()
 
+        # توليد رابط التنزيل
         download_url = f"{request.host_url}download/{quote(clean_filename)}"
         return jsonify({"message": "تم تحويل الملف بنجاح!", "download_link": download_url}), 200
     except Exception as e:
         return jsonify({"error": f"حدث خطأ أثناء التحويل: {str(e)}"}), 500
+
 
 # ضغط ملفات PDF
 @app.route('/compress-pdf', methods=['POST'])
@@ -144,5 +153,9 @@ def download_file(filename):
 
 
 # تشغيل الخادم
-if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5500, debug=True)
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))  # قراءة المنفذ من متغير البيئة أو استخدام 5000 كافتراضي
+    app.run(host="0.0.0.0", port=port)
+
