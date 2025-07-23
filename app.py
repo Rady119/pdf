@@ -16,6 +16,7 @@ CORS(app)
 UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
 
+# Ensure the directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
@@ -58,6 +59,9 @@ def convert_pdf_to_word():
         # حفظ الملف المرفوع
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
+
+        # Ensure the uploads directory exists
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
         # تحويل PDF إلى Word
         docx_path = os.path.join(CONVERTED_FOLDER, clean_filename)
